@@ -1,10 +1,15 @@
-"""Backend test suite for the secure DevSecOps PoC."""
-import os, sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app" / "backend"))
+"""
+Backend test suite for the secure DevSecOps PoC.
+
+sys.path is configured by tests/conftest.py — do not add path manipulation here.
+"""
+import os
+
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
-from app import app
+
+from app import app  # noqa: E402
 import pytest
+
 
 @pytest.fixture()
 def client():
@@ -42,11 +47,11 @@ def test_echo_reflects_payload(client):
     assert client.post("/api/echo", json={"key": "value"}).get_json()["received"]["key"] == "value"
 
 def test_echo_sanitises_long_values(client):
-    resp = client.post("/api/echo", json={"k": "x"*500})
+    resp = client.post("/api/echo", json={"k": "x" * 500})
     assert len(resp.get_json()["received"]["k"]) <= 200
 
 def test_echo_sanitises_long_keys(client):
-    key = list(client.post("/api/echo", json={"k"*100: "v"}).get_json()["received"].keys())[0]
+    key = list(client.post("/api/echo", json={"k" * 100: "v"}).get_json()["received"].keys())[0]
     assert len(key) <= 50
 
 def test_echo_empty_payload(client):
@@ -59,7 +64,7 @@ def test_echo_non_json_returns_400(client):
     assert client.post("/api/echo", data="x", content_type="text/plain").status_code == 400
 
 def test_echo_array_returns_400(client):
-    resp = client.post("/api/echo", json=["a","b"])
+    resp = client.post("/api/echo", json=["a", "b"])
     assert resp.status_code == 400
     assert "error" in resp.get_json()
 
@@ -82,7 +87,7 @@ def test_metrics_has_histogram(client):
 def test_metrics_counter_increments(client):
     def count():
         for line in client.get("/metrics").data.decode().splitlines():
-            if 'secure_app_http_requests_total{' in line and 'health' in line and not line.startswith("#"):
+            if "secure_app_http_requests_total{" in line and "health" in line and not line.startswith("#"):
                 return float(line.split()[-1])
         return 0.0
     before = count()
@@ -119,4 +124,4 @@ def test_sec_header_message(client, h, v):
 
 @pytest.mark.parametrize("h,v", HEADERS)
 def test_sec_header_echo(client, h, v):
-    assert client.post("/api/echo", json={"x":"y"}).headers.get(h) == v
+    assert client.post("/api/echo", json={"x": "y"}).headers.get(h) == v
