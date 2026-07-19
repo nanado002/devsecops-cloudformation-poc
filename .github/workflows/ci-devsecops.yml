@@ -174,16 +174,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check OIDC availability
+        continue-on-error: true
         run: |
+          set +e
           echo "OIDC_URL: ${ACTIONS_ID_TOKEN_REQUEST_URL:+SET}"
           echo "OIDC_TOKEN: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+SET}"
-          JWT=$(curl -sS -H 'Authorization: bearer '"$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          echo "ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}"
+          JWT=$(curl -fsS -H 'Authorization: bearer '"$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
             | python3 -c 'import sys,json; print(json.load(sys.stdin).get("value","EMPTY"))')
-          PART=$(echo "$JWT" | cut -d. -f2 | tr -- -_ +/)
-          PAYLOAD=$(echo "${PART}==" | base64 -d 2>/dev/null)
-          echo "sub: $(echo '$PAYLOAD' | python3 -c 'import sys,json; print(json.load(sys.stdin).get("sub","?"))')"
-          echo "aud: $(echo '$PAYLOAD' | python3 -c 'import sys,json; print(json.load(sys.stdin).get("aud","?"))')"
+          echo "JWT: ${JWT:0:20}..."
+          echo "sub: $(echo "$JWT" | cut -d. -f2 | tr -- -_ +/ | base64 -d 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("sub","?"))' 2>&1)"
           aws sts assume-role-with-web-identity \
             --role-arn "${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}" \
             --role-session-name dbg \
