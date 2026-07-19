@@ -110,15 +110,19 @@ jobs:
           echo "GF_ADMIN_USER=admin" >> .env
           echo "GF_ADMIN_PASSWORD=${{ secrets.GF_ADMIN_PASSWORD || 'ci-grafana-pw' }}" >> .env
 
+      - name: Build images
+        run: docker compose build
+
       - name: Start app
-        run: docker compose up -d --build
+        run: docker compose up -d
 
       - name: Wait for frontend
         run: |
-          for i in {1..30}; do
+          for i in {1..60}; do
             if curl -s http://localhost:8080 >/dev/null; then exit 0; fi
-            sleep 2
+            sleep 3
           done
+          docker compose logs frontend
           exit 1
 
       - name: Wait for backend metrics
