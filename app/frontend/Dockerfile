@@ -1,5 +1,10 @@
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 
+# Upgrade OS packages at build time to pull in security patches.
+# This addresses CVEs in Alpine base packages (openssl, libxml2, musl, etc.)
+# that have fixed versions available but are not yet in the pinned base image.
+RUN apk upgrade --no-cache
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY index.html /usr/share/nginx/html/index.html
 
