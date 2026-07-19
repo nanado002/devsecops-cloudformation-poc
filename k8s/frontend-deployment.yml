@@ -24,7 +24,7 @@ spec:
       containers:
         - name: frontend
           image: devsecops-poc-frontend:local
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           resources:

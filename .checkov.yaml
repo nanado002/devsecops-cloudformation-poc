@@ -1,0 +1,34 @@
+# Checkov configuration for DevSecOps CloudFormation PoC
+# Each skip is documented with the reason it is intentionally not remediated.
+skip-check:
+  # CKV_AWS_18: S3 access logging — no dedicated logging bucket is provisioned
+  # in this PoC. In production, add a separate logging bucket and enable access logs.
+  - CKV_AWS_18
+
+  # CKV_AWS_136: ECR KMS CMK encryption — repos use AWS-managed AES256 encryption,
+  # which satisfies encryption-at-rest requirements for a PoC. A KMS CMK would require
+  # an additional KMS key resource and key policy not in scope here.
+  - CKV_AWS_136
+
+  # CKV_AWS_158: CloudWatch Log Group KMS encryption — same rationale as CKV_AWS_136.
+  # AWS-managed encryption is applied by default; CMK not in PoC scope.
+  - CKV_AWS_158
+
+  # CKV_AWS_149: Secrets Manager KMS CMK — the secret is protected by the default
+  # aws/secretsmanager CMK. A customer-managed KMS key is not in PoC scope.
+  - CKV_AWS_149
+
+  # CKV_K8S_43: Image digest pinning — the k8s manifests use build-time tag placeholders
+  # replaced by CI (via sed) with the commit SHA. Trivy scans the built image for CVEs
+  # before it reaches the cluster. Digest pinning would prevent the sed substitution.
+  - CKV_K8S_43
+
+  # CKV_K8S_40: Container high UID (>10000) — runAsNonRoot: true is enforced at the
+  # pod level. The specific UID is set in each Dockerfile. A minimum UID policy of 10000
+  # is not required by the security policy of this PoC.
+  - CKV_K8S_40
+
+  # CKV_GHA_7: workflow_dispatch inputs — the deploy-aws.yml workflow requires stack_name
+  # and aws_region inputs to support flexible manual deployments to multiple environments.
+  # Removing inputs would make the workflow non-functional.
+  - CKV_GHA_7

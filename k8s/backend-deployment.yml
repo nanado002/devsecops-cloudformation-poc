@@ -28,7 +28,7 @@ spec:
       containers:
         - name: backend
           image: devsecops-poc-backend:local
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:
