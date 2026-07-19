@@ -41,8 +41,11 @@ jobs:
 
       - name: Run tests
         # SECRET_KEY is required by the app; supply a test-only value here.
+        # PYTHONPATH ensures 'from app import app' resolves to app/backend/app.py
+        # regardless of how pytest configures sys.path.
         env:
           SECRET_KEY: ${{ secrets.APP_SECRET_KEY || 'ci-test-key-not-for-production' }}
+          PYTHONPATH: ${{ github.workspace }}/app/backend
         run: pytest tests -v
 
       - name: SAST with Bandit
