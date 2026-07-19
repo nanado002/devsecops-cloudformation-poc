@@ -1,7 +1,7 @@
 """Backend test suite for the secure DevSecOps PoC."""
 import os, sys
 from pathlib import Path
-sys.path.insert(0, str(Path("/sessions/sleepy-ecstatic-allen/mnt/outputs/devsecops-cloudformation-poc/app/backend")))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app" / "backend"))
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 from app import app
 import pytest
