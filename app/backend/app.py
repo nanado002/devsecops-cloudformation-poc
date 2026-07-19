@@ -110,4 +110,4 @@ def internal_error(exc):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)  # nosec B104 - dev server only, production uses gunicorn
+    app.run(host="0.0.0.0", port=5000)  # nosec B104  # nosemgrep: python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host

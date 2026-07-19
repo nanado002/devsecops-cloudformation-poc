@@ -33,13 +33,18 @@ jobs:
         run: aws cloudformation validate-template --template-body file://cloudformation/secure-app-foundation.yml
 
       - name: Deploy CloudFormation stack
+        # Use env vars for github context data to prevent shell injection (semgrep: run-shell-injection).
+        env:
+          STACK_NAME: ${{ inputs.stack_name }}
+          GITHUB_ORG: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
         run: |
           aws cloudformation deploy \
-            --stack-name "${{ inputs.stack_name }}" \
+            --stack-name "$STACK_NAME" \
             --template-file cloudformation/secure-app-foundation.yml \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides \
               ProjectName=devsecops-poc \
-              GitHubOrg=${{ github.repository_owner }} \
-              GitHubRepo=${{ github.event.repository.name }} \
+              GitHubOrg="$GITHUB_ORG" \
+              GitHubRepo="$GITHUB_REPO" \
               GitHubBranch=main
