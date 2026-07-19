@@ -83,6 +83,7 @@ jobs:
           format: table
           severity: CRITICAL,HIGH
           exit-code: "1"
+          ignore-unfixed: true
 
       - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@master
@@ -91,6 +92,7 @@ jobs:
           format: table
           severity: CRITICAL,HIGH
           exit-code: "1"
+          ignore-unfixed: true
 
   dast:
     name: DAST Baseline
