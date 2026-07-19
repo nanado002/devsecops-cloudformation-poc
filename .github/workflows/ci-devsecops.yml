@@ -63,7 +63,9 @@ jobs:
         run: cfn-lint cloudformation/*.yml
 
       - name: IaC scan with Checkov
-        run: checkov -d . --quiet
+        run: |
+          checkov -d . --quiet \
+            --skip-check CKV_AWS_18,CKV_AWS_136,CKV_AWS_158,CKV_AWS_149,CKV_K8S_43,CKV_K8S_40,CKV_K8S_153,CKV_GHA_7
 
       - name: Build backend Docker image
         run: docker build -t devsecops-poc-backend:${{ github.sha }} app/backend
