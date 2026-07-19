@@ -170,11 +170,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug OIDC availability
+        run: |
+          echo "OIDC token URL set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo YES || echo NO)"
+          echo "OIDC token token set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo YES || echo NO)"
+          echo "Role ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}"
+          echo "Region: ${{ vars.AWS_REGION }}"
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+          audience: sts.amazonaws.com
+          role-session-name: GitHubActionsDeploySession
 
       - name: Login to Amazon ECR
         id: ecr-login
