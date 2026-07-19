@@ -22,6 +22,7 @@ services:
       - backend
     read_only: true
     tmpfs:
+      - /tmp
       - /var/cache/nginx
       - /var/run
     security_opt:
