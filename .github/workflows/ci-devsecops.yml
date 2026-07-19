@@ -178,22 +178,14 @@ jobs:
           ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
           AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
         run: |
-          echo "=== Role ARN: $ROLE_ARN ==="
-          # Fetch OIDC token
-          JWT=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" |             python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
-          # Decode and print JWT payload claims
-          echo "$JWT" | cut -d. -f2 | tr '-_' '+/' |             python3 -c "
-import sys, base64, json
-raw = sys.stdin.read().strip()
-raw += '=' * (-len(raw) % 4)
-payload = json.loads(base64.b64decode(raw).decode())
-print('sub:', payload.get('sub'))
-print('aud:', payload.get('aud'))
-print('iss:', payload.get('iss'))
-"
-          # Call STS directly so we see the raw error
-          echo "=== Direct STS call ==="
-          aws sts assume-role-with-web-identity             --role-arn "$ROLE_ARN"             --role-session-name debug-session             --web-identity-token "$JWT" 2>&1 || true
+          echo "OIDC URL available: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo YES || echo NO)"
+          echo "OIDC token available: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo YES || echo NO)"
+          echo "Role ARN: $ROLE_ARN"
+          JWT=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com"             | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get("value",""))")
+          PAYLOAD=$(echo "$JWT" | cut -d. -f2 | python3 -c "import sys,base64; p=sys.stdin.read().strip(); p+="=="; print(base64.b64decode(p).decode())")
+          echo "sub: $(echo "$PAYLOAD" | python3 -c "import sys,json; print(json.load(sys.stdin).get("sub"))" )"
+          echo "aud: $(echo "$PAYLOAD" | python3 -c "import sys,json; print(json.load(sys.stdin).get("aud"))" )"
+          aws sts assume-role-with-web-identity --role-arn "$ROLE_ARN" --role-session-name dbg --web-identity-token "$JWT" 2>&1 || true
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
