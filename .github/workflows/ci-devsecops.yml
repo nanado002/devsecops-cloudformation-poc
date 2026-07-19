@@ -140,4 +140,93 @@ jobs:
 
       - name: Verify Grafana is healthy
         run: |
-      
+          for i in {1..30}; do
+            if curl -sf http://localhost:3000/api/health | grep -q '"database": "ok"'; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: "http://localhost:8080"
+          fail_action: false
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  deploy-eks:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: [security-and-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.EKS_CLUSTER_NAME != '' && vars.AWS_REGION != ''
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          BACKEND_REPO: ${{ vars.BACKEND_ECR_REPO }}
+        run: |
+          docker build -t $ECR_REGISTRY/$BACKEND_REPO:${{ github.sha }} app/backend
+          docker push $ECR_REGISTRY/$BACKEND_REPO:${{ github.sha }}
+
+      - name: Build and push frontend image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          FRONTEND_REPO: ${{ vars.FRONTEND_ECR_REPO }}
+        run: |
+          docker build -t $ECR_REGISTRY/$FRONTEND_REPO:${{ github.sha }} app/frontend
+          docker push $ECR_REGISTRY/$FRONTEND_REPO:${{ github.sha }}
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ vars.AWS_REGION }} \
+            --name ${{ vars.EKS_CLUSTER_NAME }}
+
+      - name: Apply namespace, RBAC, and network policy
+        run: |
+          kubectl apply -f k8s/namespace.yml
+          kubectl apply -f k8s/serviceaccount-rbac.yml
+          kubectl apply -f k8s/networkpolicy.yml
+
+      - name: Deploy backend to EKS
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          BACKEND_REPO: ${{ vars.BACKEND_ECR_REPO }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          sed "s|devsecops-poc-backend:local|$ECR_REGISTRY/$BACKEND_REPO:$IMAGE_TAG|g" \
+            k8s/backend-deployment.yml | kubectl apply -f -
+
+      - name: Deploy frontend to EKS
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          FRONTEND_REPO: ${{ vars.FRONTEND_ECR_REPO }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          sed "s|devsecops-poc-frontend:local|$ECR_REGISTRY/$FRONTEND_REPO:$IMAGE_TAG|g" \
+            k8s/frontend-deployment.yml | kubectl apply -f -
+
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/backend -n devsecops-poc --timeout=300s
+          kubectl rollout status deployment/frontend -n devsecops-poc --timeout=300s
+
+      - name: Show deployed pod status
+        if: always()
+        run: kubectl get pods -n devsecops-poc -o wide
