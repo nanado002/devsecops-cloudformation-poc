@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running native pre-commit security checks..."
+
+# Block obvious local environment and key files.
+BLOCKED_FILES=$(git diff --cached --name-only | grep -E '(^|/)(\.env|.*\.pem|.*\.key|credentials.*|secrets\..*)$' || true)
+if [[ -n "${BLOCKED_FILES}" ]]; then
+  echo "Blocked commit: sensitive file pattern detected:"
+  echo "${BLOCKED_FILES}"
+  exit 1
+fi
+
+# Run Gitleaks when installed.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --verbose --redact
+else
+  echo "Warning: gitleaks not installed. Install it for full secret scanning."
+fi
+
+# Simple custom check for risky debug code.
+if git diff --cached --name-only | grep -E '\.(py|js|ts|yml|yaml)$' >/dev/null 2>&1; then
+  if git diff --cached | grep -E 'console\.log\(|print\(.+password|debug=True' >/dev/null 2>&1; then
+    echo "Blocked commit: debug or risky logging pattern detected."
+    exit 1
+  fi
+fi
+
+echo "Pre-commit checks passed."

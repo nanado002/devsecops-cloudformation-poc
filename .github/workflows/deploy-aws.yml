@@ -1,0 +1,45 @@
+name: Deploy AWS Foundation
+
+on:
+  workflow_dispatch:
+    inputs:
+      stack_name:
+        description: CloudFormation stack name
+        required: true
+        default: devsecops-poc-foundation
+      aws_region:
+        description: AWS Region
+        required: true
+        default: us-east-1
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Validate CloudFormation template
+        run: aws cloudformation validate-template --template-body file://cloudformation/secure-app-foundation.yml
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name "${{ inputs.stack_name }}" \
+            --template-file cloudformation/secure-app-foundation.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              ProjectName=devsecops-poc \
+              GitHubOrg=${{ github.repository_owner }} \
+              GitHubRepo=${{ github.event.repository.name }} \
+              GitHubBranch=main

@@ -1,0 +1,64 @@
+{
+  "id": null,
+  "uid": "secure-app-devsecops-poc",
+  "title": "Secure App DevSecOps PoC",
+  "tags": ["devsecops", "prometheus", "cloudformation", "security"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Backend Requests",
+      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 6},
+      "targets": [
+        {
+          "expr": "sum(secure_app_http_requests_total)",
+          "legendFormat": "requests",
+          "refId": "A"
+        }
+      ],
+      "datasource": {"type": "prometheus", "uid": "Prometheus"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Rate by Endpoint",
+      "gridPos": {"x": 8, "y": 0, "w": 16, "h": 6},
+      "targets": [
+        {
+          "expr": "sum by (endpoint) (rate(secure_app_http_requests_total[5m]))",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": {"type": "prometheus", "uid": "Prometheus"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Latency p95",
+      "gridPos": {"x": 0, "y": 6, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(secure_app_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+          "legendFormat": "{{endpoint}} p95",
+          "refId": "A"
+        }
+      ],
+      "datasource": {"type": "prometheus", "uid": "Prometheus"}
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Status Codes",
+      "gridPos": {"x": 12, "y": 6, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "sum by (http_status) (rate(secure_app_http_requests_total[5m]))",
+          "legendFormat": "HTTP {{http_status}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": {"type": "prometheus", "uid": "Prometheus"}
+    }
+  ]
+}

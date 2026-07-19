@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "summary": {
+    "title": "DevSecOps Three-Tier CloudFormation PoC",
+    "owner": "Security Team",
+    "description": "Threat model for a CloudFormation-based DevSecOps proof-of-concept using GitHub Actions, Docker, Kubernetes, and AWS.",
+    "id": 0
+  },
+  "detail": {
+    "contributors": [],
+    "diagrams": [
+      {
+        "title": "High-Level Data Flow",
+        "thumbnail": "./public/content/images/thumbnail.jpg",
+        "diagramType": "STRIDE",
+        "id": 0,
+        "cells": []
+      }
+    ],
+    "diagramTop": 0,
+    "reviewer": "",
+    "threatTop": 0
+  }
+}

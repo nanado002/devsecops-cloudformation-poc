@@ -1,0 +1,78 @@
+# Ingress with TLS termination via cert-manager (Let's Encrypt).
+#
+# Prerequisites:
+#   1. cert-manager installed:  https://cert-manager.io/docs/installation/
+#   2. A ClusterIssuer named "letsencrypt-prod" configured with your email.
+#   3. Replace <YOUR_DOMAIN> with the actual hostname (e.g. app.example.com).
+#
+# To create the ClusterIssuer:
+#   kubectl apply -f k8s/clusterissuer.yml
+#
+# Once applied, cert-manager requests a certificate automatically and stores
+# it in the Secret named below.  The Ingress begins serving HTTPS within ~60 s.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devsecops-poc-ingress
+  namespace: devsecops-poc
+  annotations:
+    # cert-manager: request a certificate from Let's Encrypt production CA.
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # nginx ingress controller hardening
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      more_set_headers "Permissions-Policy: geolocation=(), microphone=(), camera=()";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - <YOUR_DOMAIN>
+      secretName: devsecops-poc-tls
+  rules:
+    - host: <YOUR_DOMAIN>
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 8080
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 5000
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 5000
+---
+# ClusterIssuer for Let's Encrypt — apply once per cluster.
+# Replace <YOUR_EMAIL> with the address Let's Encrypt will use for cert expiry notices.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: <YOUR_EMAIL>
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
