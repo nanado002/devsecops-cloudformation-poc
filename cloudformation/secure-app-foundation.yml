@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Secure foundation for DevSecOps CloudFormation PoC using GitHub Actions OIDC, ECR, S3, and CloudWatch.
+Description: Secure foundation for DevSecOps CloudFormation PoC using GitHub Actions OIDC, ECR, S3, CloudWatch, and Secrets Manager.
 
 Parameters:
   ProjectName:
@@ -176,6 +176,12 @@ Resources:
                   - cloudformation:DescribeStackEvents
                   - cloudformation:ValidateTemplate
                 Resource: '*'
+              - Sid: ReadAppSecrets
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !Sub 'arn:aws:secretsmanager:*:*:secret:${ProjectName}/app-secrets-*'
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -189,12 +195,33 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
-  # Secrets Manager secret for the backend SECRET_KEY.
-  # After stack creation, update the secret value via the console or CLI:
-  #   aws secretsmanager put-secret-value --secret-id <SecretArn> --secret-string '{"SECRET_KEY":"<value>"}'
   AppSecrets:
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: !Sub '${ProjectName}/app-secrets'
-      Description: Backend application secrets (SECRET_KEY, etc.)
-      SecretString: '{"SECRET_KEY":"REPLACE_ME_AFTER_STACK_CREAT
+      Description: Backend application secrets managed by the DevSecOps pipeline.
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: SECRET_KEY
+        PasswordLength: 64
+        ExcludeCharacters: '"@/\'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  ArtifactBucketName:
+    Description: S3 bucket for pipeline artifacts.
+    Value: !Ref ArtifactBucket
+  FrontendEcrRepositoryUri:
+    Description: Frontend ECR repository URI.
+    Value: !GetAtt FrontendRepository.RepositoryUri
+  BackendEcrRepositoryUri:
+    Description: Backend ECR repository URI.
+    Value: !GetAtt BackendRepository.RepositoryUri
+  GitHubActionsRoleArn:
+    Description: IAM role ARN for GitHub Actions OIDC.
+    Value: !GetAtt GitHubActionsRole.Arn
+  AppSecretsArn:
+    Description: Secrets Manager ARN. SECRET_KEY is auto-generated on stack creation.
+    Value: !Ref AppSecrets
