@@ -37,6 +37,11 @@ spec:
           env:
             - name: APP_ENV
               value: kubernetes
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SECRET_KEY
           resources:
             requests:
               cpu: "100m"
@@ -49,6 +54,9 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-dir
           readinessProbe:
             httpGet:
               path: /health
@@ -61,6 +69,9 @@ spec:
               port: 5000
             initialDelaySeconds: 15
             periodSeconds: 20
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
