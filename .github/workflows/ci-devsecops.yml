@@ -10,7 +10,6 @@ permissions:
   contents: read
   security-events: write
   actions: read
-  id-token: write   # Required for OIDC → AWS authentication in deploy job.
 
 jobs:
   security-and-build:
@@ -40,9 +39,6 @@ jobs:
           pip install pytest bandit pip-audit
 
       - name: Run tests
-        # SECRET_KEY is required by the app; supply a test-only value here.
-        # PYTHONPATH ensures 'from app import app' resolves to app/backend/app.py
-        # regardless of how pytest configures sys.path.
         env:
           SECRET_KEY: ${{ secrets.APP_SECRET_KEY || 'ci-test-key-not-for-production' }}
           PYTHONPATH: ${{ github.workspace }}/app/backend
@@ -165,38 +161,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [security-and-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.EKS_CLUSTER_NAME != '' && vars.AWS_REGION != ''
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check OIDC availability
-        continue-on-error: true
-        run: |
-          set +e
-          echo "OIDC_URL: ${ACTIONS_ID_TOKEN_REQUEST_URL:+SET}"
-          echo "OIDC_TOKEN: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+SET}"
-          echo "ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}"
-          JWT=$(curl -fsS -H 'Authorization: bearer '"$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
-            | python3 -c 'import sys,json; print(json.load(sys.stdin).get("value","EMPTY"))')
-          echo "JWT: ${JWT:0:20}..."
-          echo "sub: $(echo "$JWT" | cut -d. -f2 | tr -- -_ +/ | base64 -d 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("sub","?"))' 2>&1)"
-          aws sts assume-role-with-web-identity \
-            --role-arn "${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}" \
-            --role-session-name dbg \
-            --web-identity-token "$JWT" 2>&1 || true
-
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-          audience: sts.amazonaws.com
-          role-session-name: GitHubActionsDeploySession
 
       - name: Login to Amazon ECR
         id: ecr-login
