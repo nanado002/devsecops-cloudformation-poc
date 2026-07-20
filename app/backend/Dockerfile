@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+RUN addgroup --system --gid 1001 appgroup && adduser --system --ingroup appgroup --uid 1001 appuser
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
