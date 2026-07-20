@@ -214,6 +214,15 @@ jobs:
           kubectl apply -f k8s/serviceaccount-rbac.yml
           kubectl apply -f k8s/networkpolicy.yml
 
+      - name: Create app secrets in EKS
+        env:
+          APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
+        run: |
+          kubectl create secret generic app-secrets \
+            --from-literal=SECRET_KEY="${APP_SECRET_KEY:-default-change-me}" \
+            --namespace devsecops-poc \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy backend to EKS
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
