@@ -153,6 +153,14 @@ jobs:
           target: "http://localhost:8080"
           fail_action: false
 
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          echo "=== prometheus ==="
+          docker compose logs prometheus
+          echo "=== backend ==="
+          docker compose logs backend
+
       - name: Tear down
         if: always()
         run: docker compose down -v
