@@ -248,4 +248,9 @@ jobs:
 
       - name: Show deployed pod status
         if: always()
-        run: kubectl get pods -n devsecops-poc -o wide
+        run: |
+          kubectl get pods -n devsecops-poc -o wide
+          echo "--- backend describe ---"
+          kubectl describe pods -n devsecops-poc -l app=backend | tail -60
+          echo "--- backend logs ---"
+          kubectl logs -n devsecops-poc -l app=backend --tail=40 || true
