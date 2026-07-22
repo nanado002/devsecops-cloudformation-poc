@@ -1,4 +1,4 @@
-# DevSecOps CloudFormation Proof of Concept
+# DevSecOps CloudFormation Pipeline PoC
 
 A working demonstration of a secure, automated CI/CD pipeline — from developer commit to production deployment on AWS EKS — built with GitHub Actions, CloudFormation, Docker, and Kubernetes.
 
@@ -18,7 +18,6 @@ A working demonstration of a secure, automated CI/CD pipeline — from developer
 - [Local Development](#local-development)
 - [Security Scanning Commands](#security-scanning-commands)
 - [GitHub Actions Pipeline](#github-actions-pipeline)
-- [Important Notes](#important-notes)
 
 ---
 
@@ -240,18 +239,3 @@ The deploy job never runs on pull requests. No stage proceeds if an earlier gate
 
 
 ---
-
-## Important Notes
-
-This is a **proof-of-concept and learning project**. It demonstrates DevSecOps tooling, pipeline design, and security engineering patterns in a controlled environment.
-
-Before using any part of this project in production:
-
-- Review and tighten all IAM policies to least-privilege for your specific workload
-- Replace the OWASP ZAP baseline scan with a full active scan and remediate findings
-- Evaluate all Checkov skip-checks against your organisation's security policy
-- Implement secret rotation schedules in AWS Secrets Manager
-- Add TLS termination at the Ingress layer
-- Enable EKS audit logging and CloudTrail for all API events
-- Review the CloudFormation stack against your organisation's compliance standards
-
