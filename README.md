@@ -239,29 +239,6 @@ The deploy job never runs on pull requests. No stage proceeds if an earlier gate
 
 ---
 
-## Interview Talking Points
-
-- **Shift-left security:** Pre-commit hooks and local Gitleaks scanning catch issues at the cheapest point — before code ever leaves the developer's machine.
-
-- **No long-lived credentials:** GitHub Actions authenticates to AWS using OIDC (`AssumeRoleWithWebIdentity`). There are no AWS access keys stored anywhere — only an IAM role ARN in a non-secret variable.
-
-- **Defense in depth:** Security is layered across the developer environment, CI pipeline, container build stage, infrastructure provisioning, and Kubernetes runtime — not bolted on at a single point.
-
-- **Policy as code:** Checkov encodes Kubernetes and CloudFormation security policies as version-controlled checks. Compliance is automated, auditable, and enforced on every PR.
-
-- **Immutable infrastructure:** CloudFormation manages all AWS resources declaratively. Infrastructure changes go through the same PR review and CI gate as application code.
-
-- **Least privilege everywhere:** IAM roles, Kubernetes RBAC, pod security contexts, and NetworkPolicies all enforce the principle of least privilege — each component has only the permissions it actually needs.
-
-- **Secrets never touch code:** Secrets flow from AWS Secrets Manager → Kubernetes Secret → container environment variable at runtime. They never appear in source code, Docker images, or CI logs.
-
-- **Observability from day one:** Prometheus and Grafana are deployed alongside the application, not added later. This enables detection of anomalous runtime behaviour immediately after every deployment.
-
-- **Supply chain security:** Dependabot monitors GitHub Actions, Python packages, and Docker base images for CVEs and opens automated pull requests to keep the dependency graph current.
-
-- **DAST in the pipeline:** OWASP ZAP runs a baseline scan against the live application on every pull request, catching runtime vulnerabilities that static analysis cannot detect.
-
-- **CloudFormation alignment:** The project deliberately uses CloudFormation rather than Terraform to match the tooling used in the target environment, demonstrating the ability to apply DevSecOps practices within an existing stack rather than replacing it.
 
 ---
 
