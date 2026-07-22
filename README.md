@@ -2,8 +2,6 @@
 
 This project demonstrates a CloudFormation-based DevSecOps pipeline that secures the delivery process from code commit to AWS/EKS deployment. It combines GitHub Actions security gates, secret scanning, SAST, SCA, IaC validation, container scanning, Kubernetes security controls, and runtime observability with Prometheus and Grafana.
 
-![DevSecOps CloudFormation Pipeline](docs/devsecops_pipeline_diagram.png)
-
 ---
 
 ## Table of Contents
@@ -36,8 +34,6 @@ The application is a three-tier web service: an nginx frontend, a Python/Flask b
 ---
 
 ## Pipeline Diagram
-
-> Place your pipeline diagram image at `docs/devsecops_pipeline_diagram.png` to display it here.
 
 ![DevSecOps CloudFormation Pipeline](docs/devsecops_pipeline_diagram.png)
 
@@ -84,11 +80,11 @@ No stage proceeds if an earlier gate fails. The deploy job never runs on pull re
 |---|---|---|
 | `.gitignore` | Secrets hygiene | Prevent `.env` files, keys, and credentials from being staged |
 | Pre-commit hook | Shift-left | Block commits containing secrets before they reach the remote |
-| Gitleaks (local + CI) | Secret scanning | Detect secrets in staged files and full repository history |
+| Gitleaks | Secret scanning | Detect secrets in staged files and full repository history |
 | Branch protection rules | Access control | Require passing CI checks and reviewer approval before merge to `main` |
 | CODEOWNERS | Access control | Enforce designated reviewers per file or directory |
 | Dependabot | Supply chain | Automated PRs for outdated Actions, Python packages, and Docker base images |
-| RBAC (GitHub Actions) | Access control | Minimal workflow permissions — `contents: read`, `id-token: write` only where required |
+| RBAC / minimal GitHub Actions permissions | Access control | Minimal workflow permissions — `contents: read`, `id-token: write` only where required |
 | Mandatory reviews | Process control | Pull requests require human approval before merge |
 | pytest | Testing | Unit tests run first — no security scan proceeds on a broken build |
 | Bandit | SAST | Python-specific static analysis for common security vulnerabilities |
@@ -97,17 +93,53 @@ No stage proceeds if an earlier gate fails. The deploy job never runs on pull re
 | cfn-lint | IaC validation | CloudFormation template syntax and AWS best-practice checks |
 | Checkov | IaC / policy scan | Policy-as-code checks for CloudFormation, Kubernetes manifests, and Dockerfiles |
 | Docker build | Container | Reproducible, minimal images built with non-root users |
-| Trivy | Image scanning | CVE scan of built images — pipeline fails on   │ Backend  │  │Prometheus│  │    │
-│  │  │  (nginx) │  │ (Flask)  │  │+ Grafana │  │    │
-│  │  └──────────┘  └──────────┘  └──────────┘  │    │
-│  │    NetworkPolicy · RBAC · Non-root pods     │    │
-│  └─────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────┘
+| Trivy | Image scanning | CVE scan of built images — pipeline fails on unresolved CRITICAL or HIGH findings |
+| OWASP ZAP | DAST | Baseline scan of the live application against OWASP Top 10 attack patterns |
+| GitHub Actions OIDC | Authentication | Short-lived AWS credentials via OIDC — no stored access keys anywhere |
+| Amazon ECR | Registry | Private, access-controlled image registry |
+| AWS CloudFormation | IaC | Declarative, auditable, version-controlled infrastructure provisioning |
+| AWS Secrets Manager | Secrets management | Runtime secret injection — secrets never appear in code, images, or CI logs |
+| EKS RBAC | K8s access control | Least-privilege ServiceAccounts and Role bindings per workload |
+| Kubernetes NetworkPolicy | Network control | Default-deny with explicit allow rules between services only |
+| Pod Security Context | Container hardening | Non-root user, read-only root filesystem, no privilege escalation, capabilities dropped |
+| Prometheus | Observability | Application metrics scraping and runtime visibility after deployment |
+| Grafana | Observability | Metrics dashboards for request rate, error rate, and latency |
+
+---
+
+## AWS Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│                  GitHub Actions                        │
+│  CI: scan → test → build → push                      │
+│  CD: OIDC auth → ECR push → EKS deploy                 │
+└──────────────────────┬───────────────────────────────┘
+                       │ OIDC (no long-lived keys)
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│                      AWS                             │
+│                                                      │
+│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │   ECR    │  │CloudFormation│  │   Secrets     │  │
+│  │ (images) │  │  (infra IaC)  │   Manager   │  │
+│  └──────────┘  └──────────────┘  └──────────────┘  │
+│                                                      │
+│  ┌─────────────────────────────────────────────┐   │
+│  │             Amazon EKS Cluster               │   │
+│  │                                              │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │   │
+│  │  │ Frontend │  │ Backend  │  │Prometheus│  │   │
+│  │  │  (nginx) │  │ (Flask)  │  │+ Grafana │  │   │
+│  │  └──────────┘  └──────────┘  └──────────┘  │   │
+│  │  NetworkPolicy · RBAC · Non-root pods        │   │
+│  └──────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────┘
 ```
 
-**CloudFormation** provisions the VPC, IAM roles, ECR repositories, S3 bucket, and the GitHub Actions OIDC provider as auditable, version-controlled infrastructure. CloudFormation was chosen because it is the standard IaC tool in the target environment.
+**CloudFormation** provisions IAM roles, ECR repositories, S3 artifact bucket, and the GitHub Actions OIDC provider as auditable, version-controlled infrastructure.
 
-**GitHub Actions OIDC** eliminates long-lived AWS credentials. The workflow uses `aws-actions/configure-aws-credentials` to exchange a short-lived GitHub token for temporary AWS credentials scoped to only the permissions needed for deployment.
+**GitHub Actions OIDC** eliminates long-lived AWS credentials. The workflow exchanges a short-lived GitHub token for temporary AWS credentials scoped to only the permissions needed for deployment.
 
 **AWS Secrets Manager** stores application secrets. The EKS deployment injects them at runtime via Kubernetes Secrets, keeping them out of source code, Docker images, and environment files.
 
@@ -143,6 +175,7 @@ Prometheus and Grafana provide runtime visibility after every deployment — sec
 Metrics are visible immediately after deployment, enabling detection of anomalous behaviour and performance regressions alongside security events.
 
 To access locally:
+
 ```bash
 docker compose up -d
 # Prometheus: http://localhost:9090
@@ -222,20 +255,18 @@ docker run --network host \
 
 ## GitHub Actions Pipeline
 
-The workflow (`.github/workflows/ci-devsecops.yml`) runs three parallel-eligible jobs with strict dependency ordering:
+The workflow (`.github/workflows/ci-devsecops.yml`) runs three jobs with strict dependency ordering:
 
 **Security Gates and Build** — runs on every push and pull request
+
 Gitleaks secret scan → pytest unit tests → Bandit SAST → pip-audit SCA → Semgrep SAST → cfn-lint → Checkov → Docker build (backend + frontend) → Trivy image scan
 
 **DAST Baseline** — runs on pull requests only
+
 Spins up the full application stack via Docker Compose → waits for all services to pass health checks → runs OWASP ZAP baseline scan → tears down
 
 **Deploy to EKS** — runs on push to `main` only, after Security Gates passes
+
 Authenticates to AWS via GitHub Actions OIDC → pushes images to Amazon ECR → updates kubeconfig → creates Kubernetes Secrets from AWS Secrets Manager values → applies namespace, RBAC, NetworkPolicy, and Deployment manifests → waits for rollout to complete → reports pod status
 
 The deploy job never runs on pull requests. No stage proceeds if an earlier gate fails.
-
----
-
-
----
