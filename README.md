@@ -279,4 +279,3 @@ Before using any part of this project in production:
 - Enable EKS audit logging and CloudTrail for all API events
 - Review the CloudFormation stack against your organisation's compliance standards
 
-This project was built for educational and portfolio purposes. Configurations reflect a development and PoC environment only.

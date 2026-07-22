@@ -15,4 +15,3 @@ Security controls demonstrated:
 - Least-privilege IAM policy for CI/CD
 - CloudWatch log retention
 
-This is intentionally lighter than a full production platform to reduce cost and make the project easier to demonstrate in an interview.
