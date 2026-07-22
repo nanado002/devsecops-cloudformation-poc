@@ -18,7 +18,6 @@ A working demonstration of a secure, automated CI/CD pipeline — from developer
 - [Local Development](#local-development)
 - [Security Scanning Commands](#security-scanning-commands)
 - [GitHub Actions Pipeline](#github-actions-pipeline)
-- [Interview Talking Points](#interview-talking-points)
 - [Important Notes](#important-notes)
 
 ---
