@@ -99,48 +99,11 @@ No stage proceeds if an earlier gate fails. The deploy job never runs on pull re
 | cfn-lint | IaC validation | CloudFormation template syntax and AWS best-practice checks |
 | Checkov | IaC / policy scan | Policy-as-code checks for CloudFormation, Kubernetes manifests, and Dockerfiles |
 | Docker build | Container | Reproducible, minimal images built with non-root users |
-| Trivy | Image scanning | CVE scan of built images — pipeline fails on unfixed CRITICAL or HIGH findings |
-| OWASP ZAP | DAST | Baseline scan of the live application against OWASP Top 10 attack patterns |
-| GitHub Actions OIDC | Authentication | Short-lived AWS credentials via OIDC — no stored access keys anywhere |
-| Amazon ECR | Registry | Private, access-controlled image registry |
-| AWS CloudFormation | IaC | Declarative, auditable, version-controlled infrastructure provisioning |
-| AWS Secrets Manager | Secrets management | Runtime secret injection — secrets never appear in code, images, or CI logs |
-| EKS RBAC | K8s access control | Least-privilege ServiceAccounts and Role bindings per workload |
-| Kubernetes NetworkPolicy | Network control | Default-deny with explicit allow rules between services only |
-| Pod security context | Container hardening | Non-root user, read-only root filesystem, no privilege escalation, capabilities dropped |
-| Prometheus | Observability | Application metrics scraping and runtime visibility after deployment |
-| Grafana | Observability | Metrics dashboards for request rate, error rate, and latency |
-
----
-
-## AWS Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   GitHub Actions                     │
-│  CI: scan → test → build → push                     │
-│  CD: OIDC auth → ECR push → EKS deploy              │
-└──────────────────────┬────────────────────────────────┘
-                     │ OIDC (no long-lived keys)
-                     ▼
-┌─────────────────────────────────────────────────────┐
-│                      AWS                            │
-│                                                     │
-│  ┌──────────┐   ┌──────────────┐   ┌────────────┐  │
-│  │   ECR    │   │ CloudFormation│  │  Secrets   │  │
-│  │ (images) │   │ (infra IaC)  │   │  Manager   │  │
-│  └────┬─────┘   └──────────────┘   └─────┬──────┘  │
-│       │                                   │         │
-│       ▼                                   ▼         │
-│  ┌────────────────────────────────────────────┐    │
-│  │              Amazon EKS Cluster             │    │
-│  │                                             │    │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │    │
-│  │  │ Frontend │  │ Backend  │  │Prometheus│  │    │
+| Trivy | Image scanning | CVE scan of built images — pipeline fails on   │ Backend  │  │Prometheus│  │    │
 │  │  │  (nginx) │  │ (Flask)  │  │+ Grafana │  │    │
 │  │  └──────────┘  └──────────┘  └──────────┘  │    │
 │  │    NetworkPolicy · RBAC · Non-root pods     │    │
-│  └────────────────────────────────────────────┘    │
+│  └─────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -316,4 +279,4 @@ Before using any part of this project in production:
 - Enable EKS audit logging and CloudTrail for all API events
 - Review the CloudFormation stack against your organisation's compliance standards
 
-This project was built for educational and portfolio purposes. Configurations reflect a development and PoC environment only.
+This project was built for educational and portfolio purposes. Co
