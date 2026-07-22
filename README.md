@@ -1,6 +1,6 @@
 # DevSecOps CloudFormation Pipeline PoC
 
-A working demonstration of a secure, automated CI/CD pipeline — from developer commit to production deployment on AWS EKS — built with GitHub Actions, CloudFormation, Docker, and Kubernetes.
+This project demonstrates a CloudFormation-based DevSecOps pipeline that secures the delivery process from code commit to AWS/EKS deployment. It combines GitHub Actions security gates, secret scanning, SAST, SCA, IaC validation, container scanning, Kubernetes security controls, and runtime observability with Prometheus and Grafana.
 
 ![DevSecOps CloudFormation Pipeline](docs/devsecops_pipeline_diagram.png)
 
