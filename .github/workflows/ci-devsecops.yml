@@ -171,7 +171,8 @@ jobs:
     name: Deploy to EKS
     runs-on: ubuntu-latest
     needs: [security-and-build]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.EKS_CLUSTER_NAME != '' && vars.AWS_REGION != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.EKS_CLUSTER_NAME != '' && vars.AWS_REGION != '' &&
+      vars.ENABLE_EKS_DEPLOY == 'true'
     permissions:
       id-token: write
       contents: read
@@ -186,11 +187,29 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      - name: EKS cluster preflight check
+        id: preflight
+        run: |
+          if aws eks describe-cluster \
+              --name "${{ vars.EKS_CLUSTER_NAME }}" \
+              --region "${{ vars.AWS_REGION }}" > /dev/null 2>&1; then
+            echo "EKS cluster found. Updating kubeconfig."
+            aws eks update-kubeconfig \
+              --name "${{ vars.EKS_CLUSTER_NAME }}" \
+              --region "${{ vars.AWS_REGION }}"
+            echo "cluster_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "EKS cluster not found. Skipping deploy because this PoC does not keep the cluster running full-time."
+            echo "cluster_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Login to Amazon ECR
+        if: steps.preflight.outputs.cluster_exists == 'true'
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push backend image to ECR
+        if: steps.preflight.outputs.cluster_exists == 'true'
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           BACKEND_REPO: ${{ vars.BACKEND_ECR_REPO }}
@@ -228,6 +247,7 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy backend to EKS
+        if: steps.preflight.outputs.cluster_exists == 'true'
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           BACKEND_REPO: ${{ vars.BACKEND_ECR_REPO }}
@@ -237,6 +257,7 @@ jobs:
             k8s/backend-deployment.yml | kubectl apply -f -
 
       - name: Deploy frontend to EKS
+        if: steps.preflight.outputs.cluster_exists == 'true'
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           FRONTEND_REPO: ${{ vars.FRONTEND_ECR_REPO }}
@@ -246,12 +267,13 @@ jobs:
             k8s/frontend-deployment.yml | kubectl apply -f -
 
       - name: Wait for rollout to complete
+        if: steps.preflight.outputs.cluster_exists == 'true'
         run: |
           kubectl rollout status deployment/backend -n devsecops-poc --timeout=300s
           kubectl rollout status deployment/frontend -n devsecops-poc --timeout=300s
 
       - name: Show deployed pod status
-        if: always()
+        if: steps.preflight.outputs.cluster_exists == 'true'
         run: |
           kubectl get pods -n devsecops-poc -o wide
           echo "--- backend describe ---"

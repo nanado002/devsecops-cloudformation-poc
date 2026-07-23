@@ -270,3 +270,7 @@ Spins up the full application stack via Docker Compose → waits for all service
 Authenticates to AWS via GitHub Actions OIDC → pushes images to Amazon ECR → updates kubeconfig → creates Kubernetes Secrets from AWS Secrets Manager values → applies namespace, RBAC, NetworkPolicy, and Deployment manifests → waits for rollout to complete → reports pod status
 
 The deploy job never runs on pull requests. No stage proceeds if an earlier gate fails.
+
+**EKS deployment is optional.** The deploy job only runs when the GitHub Actions repository variable `ENABLE_EKS_DEPLOY` is set to `true`. When the variable is absent or set to any other value, the job is skipped and the pipeline passes without attempting a cluster connection. This avoids unnecessary AWS cost when the PoC cluster is not provisioned.
+
+If `ENABLE_EKS_DEPLOY=true` but the cluster does not exist, a preflight check exits cleanly with a message rather than failing. AWS authentication uses GitHub Actions OIDC — no long-lived credentials are stored.
