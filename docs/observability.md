@@ -1,43 +1,44 @@
-# Prometheus and Grafana Observability
+# Observability with Prometheus and Grafana
 
-This proof of concept includes an observability layer so the DevSecOps workflow covers build, security, deployment readiness, and runtime visibility.
+This project includes an observability layer so the DevSecOps pipeline covers security validation, deployment readiness, and runtime visibility after release.
 
-## What was added
+## What is included
 
-- A `/metrics` endpoint in the Flask backend using `prometheus-client`.
-- Prometheus scraping the backend service every 15 seconds.
-- Grafana provisioned with Prometheus as a data source.
-- A starter Grafana dashboard for request count, request rate, p95 latency, and HTTP status codes.
-- GitHub Actions smoke tests that verify the metrics endpoint, Prometheus, and Grafana start correctly.
-- Kubernetes Prometheus scrape annotations on the backend Deployment.
+### Metrics endpoint
 
-## Local run
+The Flask backend exposes a `/metrics` endpoint using the `prometheus-client` library. Pod annotations in the Kubernetes deployment manifest tell Prometheus which pods to scrape automatically:
 
-```bash
-docker compose up -d --build
+```yaml
+annotations:
+  prometheus.io/scrape: true
+  prometheus.io/path: /metrics
+  prometheus.io/port: '5000'
 ```
 
-Open:
+### Prometheus
 
-- Frontend: `http://localhost:8080`
-- Backend health: `http://localhost:5000/health`
-- Backend metrics: `http://localhost:5000/metrics`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
+Prometheus is deployed alongside the application and scrapes the backend `/metrics` endpoint on a regular interval. No manual configuration is required — the scrape annotations are read automatically.
 
-Grafana local demo credentials:
+### Grafana
 
-```text
-Username: admin
-Password: admin
-```
+Grafana is provisioned with Prometheus as a data source and includes a starter dashboard tracking:
 
-For a real environment, replace the demo password with a secret stored in AWS Secrets Manager or your CI/CD secret store.
+- Request count
+- Request rate
+- Request latency (p50, p95, p99)
+- HTTP status code breakdown
 
-## Why this matters in DevSecOps
+### GitHub Actions smoke tests
 
-Prometheus and Grafana show that the project does not only shift security left; it also supports runtime visibility after deployment. Metrics help teams detect performance problems, failed requests, and abnormal behavior early.
+The CI pipeline includes smoke tests that verify the observability stack starts correctly after deployment. These tests confirm that the `/metrics` endpoint, Prometheus, and Grafana are all reachable before the pipeline reports a successful run.
 
-## Interview explanation
+## Why observability matters in DevSecOps
 
-> I added Prometheus and Grafana to the project so the pipeline includes observability validation. The backend exposes a `/metrics` endpoint, Prometheus scrapes those metrics, and Grafana displays request count, request rate, latency, and status codes. In the pipeline, I added a smoke test to confirm the metrics endpoint, Prometheus, and Grafana are reachable. This shows that I think beyond deployment by including monitoring and operational readiness.
+DevSecOps does not stop at the deployment gate. Prometheus and Grafana provide runtime visibility after every release, enabling teams to detect:
+
+- Elevated error rates from a newly deployed service
+- Latency regressions introduced by a dependency update
+- Abnormal traffic patterns that may indicate a security incident
+- Service health degradation before it becomes an outage
+
+Including observability in this pipeline demonstrates that security and reliability controls extend through the full software delivery lifecycle — from code commit to production runtime.
