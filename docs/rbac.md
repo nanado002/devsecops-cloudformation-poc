@@ -19,6 +19,8 @@ This project uses:
 - RoleBinding: binds the app service account to the limited role
 - Disabled service account token automounting
 
-## Interview answer
+## RBAC Design Summary
 
-> I treat the repository, CI/CD pipeline, and Kubernetes cluster as security boundaries. I use RBAC to enforce least privilege, branch protection to prevent unauthorized changes, CODEOWNERS to require review for sensitive files, and Kubernetes RoleBindings to limit what workloads can access inside the cluster.
+This project applies RBAC at both the repository and Kubernetes layers. In GitHub, access controls support protected branches, required reviews, CODEOWNERS, and restricted workflow permissions. In Kubernetes, a dedicated ServiceAccount and RoleBinding limit workload permissions inside the cluster.
+
+The goal is to enforce least privilege across the source control, CI/CD, and runtime layers.
